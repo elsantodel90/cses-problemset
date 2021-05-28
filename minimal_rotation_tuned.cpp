@@ -1,6 +1,5 @@
 #include <iostream>
-#include <string>
-#include <cassert>
+#include <cstring>
 
 using namespace std;
 
@@ -10,14 +9,16 @@ using namespace std;
 const int MAXN = 2*1100000;
 
 int z[MAXN];
+char s[MAXN];
 
 int main()
 {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
-    string s; cin >> s;
-    const int N = int(s.size());
-    s += s;
+    gets(s);
+    const int N = int(strlen(s));
+    forn(i,N)
+        s[N+i] = s[i];
     // Se prueba la rotacion que empieza en i
     int A = 0,B = 0; // Invariante: [A,B) es prefijo de la bestRot, o sea coincide con [bestRot, bestRot + B-A )
     int bestRot = 0;
@@ -25,19 +26,11 @@ int main()
     {
         int &myZ = z[i-bestRot];
         if (B > i)
-        {
-            assert(A > 0);
-            assert(A < i);
             myZ = min(z[i-A], B-i);
-            assert(myZ >= 0);
-        }
         else
             myZ = 0;
         while (i + myZ < 2*N && s[bestRot + myZ] == s[i + myZ])
-        {
             myZ++;
-            assert(i+myZ > B);
-        }
         if (i + myZ > B)
         {
             A = i;
@@ -47,7 +40,6 @@ int main()
         if (i + myZ < 2*N && s[i + myZ] < s[bestRot + myZ])
         {
             bestRot = i;
-            assert(myZ == B-i);
             if (myZ != 0)
             {
                 forsn(j, 1, myZ)
@@ -65,6 +57,7 @@ chau:;
             }
         }
     }
-    cout << s.substr(bestRot,N) << "\n";
+    s[bestRot + N] = 0;
+    cout << s + bestRot << "\n";
     return 0;
 }
