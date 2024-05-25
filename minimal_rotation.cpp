@@ -1,5 +1,5 @@
 #include <iostream>
-#include <string>
+#include <cstring>
 #include <cassert>
 
 using namespace std;
@@ -7,64 +7,99 @@ using namespace std;
 #define forn(i,n) for(int i=0;i<int(n);i++)
 #define forsn(i,s,n) for(int i=int(s);i<int(n);i++)
 
-const int MAXN = 2*1100000;
+#define DBG(x) cerr << #x << " = " << (x) << endl
 
-int z[MAXN];
+using tint = long long;
+
+const int BASE = 26;
+const int MOD = 1182684443;
+
+struct Hash
+{
+    int value;
+    void addRight(char c)
+    {
+        value = int((tint(value) * BASE + (c-'a')) % MOD);
+    }
+    void multiply(const Hash &o)
+    {
+        value = int((tint(value) * o.value) % MOD);
+    }
+    
+    void subtract(const Hash &o)
+    {
+        value -= o.value;
+        if (value < 0)
+            value += MOD;
+    }
+    
+    bool operator==(const Hash &o) const
+    {
+        return value == o.value;
+    }
+};
+
+const int MAXN = 1000100;
+
+Hash powBase[MAXN];
+
+char s[MAXN];
+Hash h[2*MAXN];
+int N;
+
+void hashInit()
+{
+    powBase[0] = {1};
+    forn(i,N)
+    {
+        powBase[i+1] = powBase[i];
+        powBase[i+1].multiply({BASE});
+    }
+    h[0] = {0};
+    forsn(i, 1, 2*N+1)
+    {
+        h[i] = h[i-1];
+        h[i].addRight(s[(i-1)%N]);
+    }
+}
+
+Hash substringHash(int i, int j)
+{
+    Hash ret = h[j];
+    Hash left = h[i];
+    left.multiply(powBase[j-i]);
+    ret.subtract(left);
+    return ret;
+}
+
+bool rotLower(int i, int j)
+{
+    int a = 0, b = N+1;
+    while (b-a > 1)
+    {
+        int c = (a+b)/2;
+        if (substringHash(i, i+c) == substringHash(j, j+c))
+            a = c;
+        else
+            b = c;
+    }
+    return s[(i+a)%N] < s[(j+a)%N];
+}
 
 int main()
 {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
-    string s; cin >> s;
-    const int N = int(s.size());
-    s += s;
-    // Se prueba la rotacion que empieza en i
-    int A = 0,B = 0; // Invariante: [A,B) es prefijo de la bestRot, o sea coincide con [bestRot, bestRot + B-A )
+    cin >> s;
+    N = int(strlen(s));
+    hashInit();
+    
     int bestRot = 0;
     forsn(i, 1, N)
-    {
-        int &myZ = z[i-bestRot];
-        if (B > i)
-        {
-            assert(A > 0);
-            assert(A < i);
-            myZ = min(z[i-A], B-i);
-            assert(myZ >= 0);
-        }
-        else
-            myZ = 0;
-        while (i + myZ < 2*N && s[bestRot + myZ] == s[i + myZ])
-        {
-            myZ++;
-            assert(i+myZ > B);
-        }
-        if (i + myZ > B)
-        {
-            A = i;
-            B = i + myZ;
-        }
-        // Esta parte es en definitiva el unico extra al algoritmo Z, lo anterior es el algoritmo Z en si mismo. 
-        if (i + myZ < 2*N && s[i + myZ] < s[bestRot + myZ])
-        {
-            bestRot = i;
-            assert(myZ == B-i);
-            if (myZ != 0)
-            {
-                forsn(j, 1, myZ)
-                if (z[j] >= myZ - j)
-                {
-                    A = i+j;
-                    while (A + z[j] < 2*N && s[A+z[j]] == s[bestRot + z[j]]) z[j]++; // fix invariante para la iteracion siguiente (si B > i tiene que ser A < i
-                    //B = i+myZ; // Ya era igual
-                    i = A;
-                    goto chau;
-                }
-                // Ninguno cumple! Podemos saltear la exploracion
-                i = B-1;
-chau:;
-            }
-        }
-    }
-    cout << s.substr(bestRot,N) << "\n";
+    if (rotLower(i, bestRot))
+        bestRot = i;
+    cout << s + bestRot;
+    s[bestRot] = 0;
+    cout << s << "\n";
     return 0;
 }
