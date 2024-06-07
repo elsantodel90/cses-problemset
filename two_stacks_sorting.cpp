@@ -4,6 +4,7 @@
 #include <numeric>
 #include <cassert>
 #include <vector>
+#include <list>
 
 using namespace std;
 
@@ -20,105 +21,43 @@ using namespace std;
 #define RAYA do {cerr << " ================ " << endl; } while (false)
 
 #define SIZE(c) int((c).size())
-#define esta(x,c) ((c).find(x) != (c).end())
-#define all(c) (c).begin(), (c).end()
+#define ALL(c) begin(c), end(c)
 
 typedef long long tint;
-typedef pair<int,int> pint;
-typedef vector<int> vint;
-typedef pair<tint,tint> ptint;
 
-template <typename T>
-ostream & operator <<(ostream &os, const vector<T>& v) {
-    forn(i,v.size())
-    {
-        if (i > 0) os << " ";
-        os << v[i];
-    }
-    return os;
-}
-
-template <typename T>
-istream & operator >>(istream &is, vector<T>& v) {
-    int n;
-    is >> n;
-    v.resize(n);
-    forn(i,n)
-        is >> v[i];
-    return is;
-}
-
-                
-/*                
-Procedimiento para resolver luego de computados los padres/antipadres: (si falla, decir imposible)
-EN ORDEN:
-    0) Si hay N en el output, ganamos
-    1) Si el siguiente esta en stack, mandarlo.
-    2) Si no hay mas input, perdimos 
-    3) Si no, si el siguiente no tiene padre/antipadre, jugar goloso [poner X en la mas chica, que sea mayor a X]
-        [Si no se puede, perdimos]
-    4) Si no, poner en la opuesta al antipadre / la misma del padre
-*/
-
-const int INF = 1000000000;
-
-bool solve(int N, const vector<int> &parent, const vector<int> &antiParent, const vector<int> &v)
+struct BiStack
 {
-    vector<int> ret(N, -1);
-    vector<int> stacks[2];
-    forn(k,2) stacks[k].push_back(INF);
-    int sent = 0;
-    int i = 0;
-    while (sent < N)
-    {
-        forn(k,2)
-        if (stacks[k].back() == sent)
-        {
-            stacks[k].pop_back();
-            sent++;
-            goto nextIteration;
-        }
-        {
-            if (i >= N)
-                return false;
-            int k = 0;
-            if (parent[i] >= 0)
-            {
-                assert(ret[parent[i]] >= 0);
-                k = ret[parent[i]];
-            }
-            else if (antiParent[i] >= 0)
-            {
-                assert(ret[antiParent[i]] >= 0);
-                k = ret[antiParent[i]] ^ 1;
-            }
-            else if (stacks[0].back() > v[i] && !(stacks[1].back() > v[i] && stacks[1].back() < stacks[0].back()))
-                k = 0;
-            else
-                k = 1;
-            ret[i] = k;
-            stacks[k].push_back(v[i]);
-            i++;
-        }
-nextIteration:;
-    }
-    for (int &x : ret)
-        x++;
-    cout << ret << "\n";
-    return true;
-}
-
-struct Restriction
-{
-    int lowerBound;
-    int anti;
+    list<int> chain[2];
     
-    bool operator<(const Restriction &o) const
+    BiStack() {}
+    BiStack(int x) {chain[0].push_back({x});}
+    
+    bool simple() const { return chain[0].empty() || chain[1].empty(); }
+    int top(int index) const { return chain[index].empty() ? -1 : chain[index].back(); }
+    int index(int x) const
     {
-        if (lowerBound != o.lowerBound)
-            return lowerBound < o.lowerBound;
-        return anti < o.anti;
+        if (top(0) == x) return 0; 
+        if (top(1) == x) return 1;
+        return -1;
     }
+    bool empty() const { return chain[0].empty() && chain[1].empty(); }
+};
+
+void fail()
+{
+    cout << "IMPOSSIBLE\n";
+    exit(0);
+}
+
+const int FREE = 0;
+const int OPPOSITE = 1;
+const int SAME = 2;
+
+struct Assignment
+{
+    int assigned;
+    int kind;
+    int other;
 };
 
 int main()
@@ -128,93 +67,75 @@ int main()
     
     int N;
     cin >> N;
-    vector<int> v(N);
-    forn(i,N)
-        cin >> v[i];
-    for (int &x : v)
-        x--;
-    
-    vector<int> pos(N+1,-1);
-    vector<int> parent(N,-1), antiParent(N,-1);
-    vector<vector<Restriction>> turnOn(N);
-    vector<vector<Restriction>> turnOff(N);
-    int following = 0;
-    forn(i,N)
+    vector<char> appeared(N, 0);
+    vector<BiStack> stacks;
+    vector<Assignment> assignments;
+    vector<int> numbers;
+    numbers.reserve(N);
+    int nextX = 0;
+    forn(steps,2*N)
     {
-        int x = v[i];
-        pos[x] = i;
-        if (x == following)
+        if (!appeared[nextX])
         {
-            following = x+1;
-            while (pos[following] >= 0)
-                following++;
-            
-            /* 
-             * Restricciones que genera el x que a su derecha el primero es following (con x < following)
-                Si following=x+1, nada
-                Si no:
-                    A y B se pueden buscar "a lo bruto", en O(following-x)
-                    Sea A el primer X con x < X < following (ta a la izquierda de x y existe)
-                    Sea B el ultimo X con X > following a la izquierda de x, si existe (si no, no hay restricciones)
-                        1) Todos los >following entre A y B (incluido B) van en la opuesta que A
-                        
-                        2) Todos los x < X < following entre A y B (no incluido A) van en la misma que A
-                            [Se pueden bruteforcear los valores de X y marcar]
-            */
-            
-            int A = N;
-            forsn(val, x+1, following)
-                A = min(A, pos[val]);
-            if (A < N)
+            int x;
+            cin >> x;
+            x--;
+            numbers.push_back(x);
+            appeared[x] = 1;
+            stacks.push_back(BiStack(x));
+        }
+        else
+        {
+            int x = nextX++;
+            dforn(i, SIZE(stacks))
             {
-                assert(0 <= A);
-                assert(A < i);
-                int B = -1;
-                dforn(j, i)
-                if (v[j] > following)
+                int index = stacks[i].index(x);
+                if (index >= 0)
                 {
-                    B = j;
-                    break;
-                }
-                if (B >= A)
-                {
-                    assert(B > A);
-                    forsn(val, x+1, following)
-                    if (A < pos[val] && pos[val] < B)
-                        parent[pos[val]] = A;
-                    turnOn[A].push_back({following, A});
-                    turnOff[B+1].push_back({following, A});
+                    auto & xChain = stacks[i].chain[index];
+                    auto & otherChain = stacks[i].chain[index^1];
+                    forsn(j, i+1, SIZE(stacks))
+                    {
+                        if (!stacks[j].simple())
+                            fail();
+                        forn(si, 2)
+                            otherChain.splice(otherChain.end(), stacks[j].chain[si]);
+                    }
+                    stacks.resize(i+1);
+                    xChain.pop_back();
+                    if (!otherChain.empty())
+                        assignments.push_back({x, OPPOSITE, otherChain.back()});
+                    else if (!xChain.empty())
+                        assignments.push_back({x, SAME, xChain.back()});
+                    else
+                        assignments.push_back({x, FREE, 0});
+                    if (stacks[i].empty())
+                        stacks.pop_back();
+                    goto noproblem;
                 }
             }
-            else
-                assert(following == x+1);
+            fail();
+noproblem:;
         }
     }
-    multiset<Restriction> restrictions;
-    forn(i,N)
+    vector<int> ret(N);
+    dforn(i, SIZE(assignments))
     {
-        for (Restriction r : turnOn[i])
-            restrictions.insert(r);
-        for (Restriction r : turnOff[i])
-            restrictions.erase(restrictions.find(r));
-        if (!restrictions.empty())
-        {
-            Restriction r = *restrictions.begin();
-            if (v[i] > r.lowerBound)
-                antiParent[i] = r.anti;
-        }
+        if (assignments[i].kind == SAME)
+            ret[assignments[i].assigned] = ret[assignments[i].other];
+        else if (assignments[i].kind == OPPOSITE)
+            ret[assignments[i].assigned] = 3 - ret[assignments[i].other];
+        else if (assignments[i].kind == FREE)
+            ret[assignments[i].assigned] = 1;
+        else
+            assert(false);
     }
     forn(i,N)
     {
-        DBG(i);
-        DBG(v[i]);
-        DBG(parent[i]);
-        DBG(antiParent[i]);
-        RAYA;
+        if (i > 0)
+            cout << " ";
+        cout << ret[numbers[i]];
     }
-    
-    if (!solve(N, parent, antiParent, v))
-        cout << "IMPOSSIBLE\n";
-    
+    cout << "\n";
     return 0;
 }
