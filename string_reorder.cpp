@@ -44,7 +44,6 @@ int main()
         forn(j,26)
             maxLetter = max(maxLetter, histogram[j]);
         int total = n-i;
-        // Falla si 
         forn(j, 26)
         if (histogram[j] > 0 && j != lastLetter && (histogram[j] == maxLetter || 2*maxLetter <= total))
         {
