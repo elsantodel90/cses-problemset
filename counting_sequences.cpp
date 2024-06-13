@@ -65,11 +65,11 @@ int main()
     int n,k;
     cin >> n >> k;
     tint ret = 0;
-    forn(i,k)
+    forsn(i,1,k+1)
     {
-        tint coef = (k+i)%2 == 0 ? -k : k;
-        coef = (coef * binom(k-1, i)) % MOD;
-        ret += (coef * potlog(i+1, n-1))%MOD;
+        tint coef = (k+i)%2 == 0 ? 1 : -1;
+        coef = (coef * binom(k, i)) % MOD;
+        ret += (coef * potlog(i, n))%MOD;
     }
     cout << (((ret%MOD)+MOD)%MOD) << "\n";
     
