@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <algorithm>
 #include <vector>
@@ -51,6 +52,14 @@ istream & operator >>(istream &is, vector<T>& v) {
     return is;
 }
 
+// Minimum nonzero absolute difference between the fractional part of a valid answer
+// given input constraints and an odd multiple of 1/2e6.
+// That is: the minimum possible distance to a "rounding boundary", of an answer
+// that is not exactly at the rounding boundary.
+// Found experimentally by running an arbitrary precision solution code over all 10000 possible inputs.
+const double MIN_DIST = 3.1236062919465245e-11;
+const double EPS = MIN_DIST / 2.0;
+
 int main()
 {
     ios::sync_with_stdio(false);
@@ -68,7 +77,17 @@ int main()
         ret += m * pEqualM;
     }
     
-    cout << fixed << setprecision(6) << ret << "\n";
+    string ret1 = (ostringstream() << fixed << setprecision(6) << (ret-EPS)).str();
+    string ret2 = (ostringstream() << fixed << setprecision(6) << (ret+EPS)).str();
+    string stringRet = ret1;
+    if (ret1 != ret2)
+    {
+        assert(ret1.back()%2 != ret2.back()%2);
+        if ((ret2.back()-'0') % 2 == 0)
+            stringRet = ret2;
+    }
+    
+    cout << stringRet << "\n";
     
     return 0;
 }
